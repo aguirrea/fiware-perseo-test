@@ -1,0 +1,60 @@
+#based on https://projetos.imd.ufrn.br/FIoT-Client/fiot-client-tutorial/blob/87d5e4e92cf6b2365e2088513bfb774a2b04e8b3/deploy/te
+version: "2"
+
+services:
+
+    mongodb-perseo:
+       image: mongo:3.4.2
+       hostname: mongodb-perseo
+       container_name: mongodb-perseo
+       expose:
+         - "27018"
+       ports:
+         - "27018:27017"
+       volumes:
+            - ./mongodata:/data/db
+
+    orion:
+       image: fiware/orion
+       depends_on:
+         - mongodb-perseo
+       links:
+         - mongodb-perseo
+       ports:
+         - "1026:1026"
+       command: -dbhost mongodb-perseo
+
+    perseo-core:
+        image: telefonicaiot/perseo-core
+        command: -perseo_fe_url perseo-fe:9090
+        hostname: perseo-core
+        container_name: perseo-core
+        volumes:
+          - ./perseo-core.properties
+        expose:
+          - "8080"
+        ports:
+          - "8080:8080"
+    perseo-fe:
+        image: telefonicaiot/perseo-fe
+        hostname: perseo-fe
+        container_name: perseo-fe
+        ports:
+            - 9090:9090
+        links:
+            - mongodb-perseo
+            - perseo-core
+            - orion
+        depends_on:
+            - perseo-core
+        environment:
+            - PERSEO_MONGO_ENDPOINT=mongodb-perseo
+            #- PERSEO_MONGO_HOST=mongodb-perseo
+            - PERSEO_CORE_URL=http://perseo-core:8080
+            - PERSEO_LOG_LEVEL=error
+            - PERSEO_ORION_URL=http://orion:1026/v1/updateContext
+            #- PERSEO_SMTP_HOST=smtp.gmail.com
+            #- PERSEO_SMTP_PORT=465
+            #- PERSEO_SMTP_SECURE=true
+            #- PERSEO_SMTP_AUTH_USER=XXXXX@XXXXX.com
+            #- PERSEO_SMTP_AUTH_PASS=XXXXX
